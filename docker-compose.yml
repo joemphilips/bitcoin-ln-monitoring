@@ -1,0 +1,212 @@
+version: "3"
+
+services:
+  bitcoind:
+    restart: unless-stopped
+    build:
+      context: ./Dockerfiles
+      dockerfile: bitcoin
+    environment:
+      BITCOIN_NETWORK: mainnet
+    user: root:root
+    command:
+      - bitcoind
+      - -datadir=/data
+      - -rpcauth=joemphilips:232076c6716e7d91cdc8dcdc405630bd$$770df8ba488132c0d59b30605fe62f89e1152593f4dd9e8f0cab0ad7a3f85a6a
+      - -rpcport=43782
+      - -rpcbind=0.0.0.0:43782
+      - -port=39388
+      - -txindex=1
+      - -whitelist=0.0.0.0/0
+      - -zmqpubrawblock=tcp://0.0.0.0:28332
+      - -zmqpubrawtx=tcp://0.0.0.0:28333
+      - -deprecatedrpc=signrawtransaction
+      - -assumevalid=0000000000000000000f1c54590ee18d15ec70e68c8cd4cfbadb1b4f11697eee
+    ports: 
+      - "43782:43782"
+    expose:
+      - "43782" # RPC
+      - "39388" # P2P
+      - "28332" # ZMQ
+      - "28333" # ZMQ
+    volumes:
+      - "/mnt/data/joemphilips/.bitcoin:/data"
+
+  eclair:
+    restart: unless-stopped
+    stop_signal: SIGINT
+    image: acinq/eclair:btcpay
+    environment:
+      JAVA_OPTS: |
+        -Xmx256m
+        -Declair.printToConsole
+        -Declair.headless
+        -Declair.chain=mainnet
+        -Declair.server.binding-ip=0.0.0.0
+        -Declair.server.public-ips.0=13.78.33.133
+        -Declair.server.port=9876
+        -Declair.api.enabled=true
+        -Declair.api.binding-ip=0.0.0.0
+        -Declair.api.port=8080
+        -Declair.node-alias=jem2323-eclair1
+        -Declair.api.password=EjfD5sAD3ieFpnSMZojH
+        -Declair.bitcoind.host=bitcoind
+        -Declair.bitcoind.rpcport=43782
+        -Declair.bitcoind.rpcuser=joemphilips
+        -Declair.bitcoind.rpcpassword=8PEdmIIWB5qz17S0bQjOQ8DmJVFpMhfi8wg-6qYhL88=
+        -Declair.bitcoind.zmqblock=tcp://bitcoind:28332
+        -Declair.bitcoind.zmqtx=tcp://bitcoind:28333
+    expose:
+      - "9876" # server port
+      - "8080" # api port
+    volumes:
+      - "/mnt/data/joemphilips/.bitcoin:/etc/bitcoin"
+      - "/mnt/data/joemphilips/.eclair:/data"
+    links:
+      - bitcoind
+
+  nbxplorer:
+    restart: unless-stopped
+    ports:
+      - 32838:32838
+    image: nicolasdorier/nbxplorer:2.1.3
+    environment:
+      NBXPLORER_NETWORK: mainnet
+      NBXPLORER_BIND: 0.0.0.0:32838
+      NBXPLORER_NOAUTH: 0
+      NBXPLORER_CHAINS: "btc"
+      NBXPLORER_BTCRPCUSER: "joemphilips"
+      NBXPLORER_BTCRPCPASSWORD: "8PEdmIIWB5qz17S0bQjOQ8DmJVFpMhfi8wg-6qYhL88="
+      NBXPLORER_BTCRPCURL: http://bitcoind:43782/
+      NBXPLORER_BTCNODEENDPOINT: bitcoind:39388
+      NBXPLORER_RMQHOST: rabbitmq
+      NBXPLORER_RMQVIRTUAL: /
+      NBXPLORER_RMQUSER: guest
+      NBXPLORER_RMQPASS: guest
+      NBXPLORER_RMQTRANEX: NewTransaction
+      NBXPLORER_RMQBLOCKEX: NewBlock
+    volumes:
+      - "/mnt/data/joemphilips/.nbxplorer:/datadir"
+      - "/mnt/data/joemphilips/.bitcoin:/root/.bitcoin"
+      - "/mnt/data/joemphilips/.elements:/root/.elements"
+    links:
+      - bitcoind
+      - rabbitmq
+
+  lightningd:
+    image: blockstream/lightningd:prom
+    command:
+      - lightningd
+      - --bitcoin-rpcconnect=bitcoind
+      - --bitcoin-rpcuser=joemphilips
+      - --bitcoin-rpcpassword=8PEdmIIWB5qz17S0bQjOQ8DmJVFpMhfi8wg-6qYhL88=
+      - --bitcoin-rpcport=43782
+      - --network=bitcoin
+      - --plugin-dir=/usr/local/bin/plugins
+      - --alias=jem2323-lighningd1
+      - --log-level=debug
+      - --lightning-dir=/root/.lightning
+    environment:
+      EXPOSE_TCP: "true"
+    expose:
+      - "9735" # server port
+      - "9835" # api port
+      - "9900" # prometheus plugin
+    ports:
+      - "0.0.0.0:9999:9735"
+      - "0.0.0.0:9835:9835"
+      - "0.0.0.0:9900:9900"
+    links:
+      - bitcoind
+    volumes:
+      - "/mnt/data/joemphilips/.lightningd:/root/.lightning"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    hostname: rabbitmq
+    environment:
+      "RABBITMQ_DEFAULT_PASS": "guest"
+      "RABBITMQ_DEFAULT_USER": "guest"
+      "RABBITMQ_DEFAULT_VHOST": "/"
+    ports:
+      - 4369:4369
+      - 5671:5671
+      - 5672:5672
+      - 15672:15672
+
+  lightningd_spark:
+    image: shesek/spark-wallet:0.2.9-standalone
+    restart: unless-stopped
+    environment:
+      NETWORK: mainnet
+      SPARK_OPT: --no-tls -C /data/.cookie
+    volumes:
+    - "/mnt/data/joemphilips/.lightningd:/etc/lightning"
+    - "/mnt/data/joemphilips/.lightningd_spark:/data"
+    links:
+    - lightningd
+    expose:
+    - "9737"
+
+  electrs:
+    image: joemphilips/electrs:v0.8.2
+    restart: unless-stopped
+    user: root:root
+    environment:
+      RUST_BACKTRACE: 1
+    command:
+      - electrs
+      - -vvv
+      - --network=bitcoin
+      - --db-dir=/data
+      - --daemon-dir=/bitcoin
+      - --electrum-rpc-addr=127.0.0.1:50001
+      - --daemon-rpc-addr=bitcoind:43782
+      - --bulk-index-threads=1
+      - --tx-cache-size-mb=256
+    volumes:
+      - "/mnt/data/joemphilips/.electrs/data:/data"
+      - "/mnt/data/joemphilips/.electrs/etc:/etc/electrs"
+      - "/mnt/data/joemphilips/.bitcoin:/bitcoin"
+    ports:
+      - 50001:50001
+
+  alertmanager:
+    image: prom/alertmanager:v0.20.0
+    user: root:root
+    restart: unless-stopped
+    command:
+      - '--config.file=/alertmanager.yml'
+      - '--storage.path=/data'
+    volumes:
+      - './prometheus/etc/alertmanager.yml:/alertmanager.yml:ro'
+      - '/mnt/data/joemphilips/prometheus/data/alertmanager:/data'
+    expose:
+      - "9093"
+
+  prometheus:
+    image: prom/prometheus:v2.15.1
+    user: root:root
+    restart: unless-stopped
+    command:
+      - '--config.file=/prometheus.yml'
+      - '--storage.tsdb.path=/data'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    volumes:
+      - "./prometheus/etc/prometheus.yml:/prometheus.yml:ro"
+      - "./prometheus/etc/alerts.yml:/config/alerts.yml:ro"
+      - "/mnt/data/joemphilips/prometheus/data/prometheus:/data"
+    links:
+      - lightningd
+      - alertmanager
+    ports:
+      - 9090:9090
+
+  postgres:
+    restart: unless-stopped
+    image: postgres:9.6.5
+    volumes:
+    - "./data/postgres:/var/lib/postgresql/data"
+

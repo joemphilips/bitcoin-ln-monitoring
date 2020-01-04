@@ -1,0 +1,202 @@
+version: "3"
+services:
+  traefik:
+    restart: unless-stopped
+    image: traefik
+    container_name: traefik
+    ports:
+    - "${REVERSEPROXY_HTTP_PORT:-80}:80"
+    - "${REVERSEPROXY_HTTPS_PORT:-443}:443"
+    volumes:
+    - "/var/run/docker.sock:/var/run/docker.sock"
+    - "./traefik.toml:/traefik.toml"
+    - "./acme.json:/acme.json:ro"
+    - "./servers.toml:/servers.toml"
+    - "./traefik_logs:/traefik_logs"
+    links:
+    - btcpayserver
+  btcpayserver:
+    restart: unless-stopped
+    image: ${BTCPAY_IMAGE:-btcpayserver/btcpayserver:1.0.3.146}
+    expose:
+    - "49392"
+    environment:
+      BTCPAY_POSTGRES: User ID=postgres;Host=postgres;Port=5432;Database=btcpayserver${NBITCOIN_NETWORK:-regtest}
+      BTCPAY_NETWORK: ${NBITCOIN_NETWORK:-regtest}
+      BTCPAY_BIND: 0.0.0.0:49392
+      BTCPAY_ROOTPATH: ${BTCPAY_ROOTPATH:-/}
+      BTCPAY_SSHCONNECTION: "root@host.docker.internal"
+      BTCPAY_SSHTRUSTEDFINGERPRINTS: ${BTCPAY_SSHTRUSTEDFINGERPRINTS}
+      BTCPAY_SSHKEYFILE: ${BTCPAY_SSHKEYFILE}
+      BTCPAY_SSHAUTHORIZEDKEYS: ${BTCPAY_SSHAUTHORIZEDKEYS}
+      BTCPAY_DEBUGLOG: btcpay.log
+      BTCPAY_CHAINS: "btc"
+      BTCPAY_BTCEXPLORERURL: http://nbxplorer:32838/
+      BTCPAY_BTCLIGHTNING: "type=clightning;server=unix://etc/clightning_bitcoin/lightning-rpc"
+      BTCPAY_BTCEXTERNALSPARK: "server=/spark/btc/;cookiefile=/etc/clightning_bitcoin_spark/.cookie"
+      BTCPAY_BTCEXTERNALCHARGE: "server=/lightning-charge/btc/;cookiefilepath=/etc/clightning_bitcoin_charge/.cookie"
+      HIDDENSERVICE_NAME: BTCPayServer
+      HIDDENSERVICE_REVERSEPROXY: nginx
+      BTCPAY_TORRCFILE: /usr/local/etc/tor/torrc-2
+      BTCPAY_SOCKSENDPOINT: tor:9050
+    links:
+    - postgres
+    - clightning_bitcoin
+    volumes:
+    - "btcpay_datadir:/datadir"
+    - "nbxplorer_datadir:/root/.nbxplorer"
+    - "clightning_bitcoin_datadir:/etc/clightning_bitcoin"
+    - "clightning_bitcoin_spark:/etc/clightning_bitcoin_spark"
+    - "clightning_bitcoin_charge:/etc/clightning_bitcoin_charge"
+    - "tor_servicesdir:/var/lib/tor/hidden_services"
+    - "tor_torrcdir:/usr/local/etc/tor/"
+  bitcoind:
+    restart: unless-stopped
+    container_name: btcpayserver_bitcoind
+    image: btcpayserver/bitcoin:0.18.0-1
+    environment:
+      BITCOIN_NETWORK: ${NBITCOIN_NETWORK:-regtest}
+      BITCOIN_WALLETDIR: "/walletdata"
+      BITCOIN_EXTRA_ARGS: |
+        rpcport=43782
+        rpcbind=0.0.0.0:43782
+        port=39388
+        whitelist=0.0.0.0/0
+
+        onion=tor:9050
+        # rpcuser=btcrpc
+        # rpcpassword=btcpayserver4ever
+        # We need to use rpcauth because we also need cookieauth. rpcpassword disabled cookie file auth.
+        # Be careful if you copy the line below from the docker-compose.yml! A dollar sign is escaped.
+        rpcauth=btcrpc:a6a5d29a3f44f02e4cd8cabb5b10a234$$ab6152915515f6a9cca806d2ab5f0e2794c346ba74f812c61e48241d523778b8
+      HIDDENSERVICE_NAME: BTC-P2P,BTC-RPC
+      BTC-P2P_HIDDENSERVICE_VIRTUAL_PORT: 8333
+      BTC-P2P_HIDDENSERVICE_PORT: 39388
+      BTC-RPC_HIDDENSERVICE_VIRTUAL_PORT: 8332
+      BTC-RPC_HIDDENSERVICE_PORT: 43782
+    expose:
+    - "43782"
+    - "39388"
+    volumes:
+    - "bitcoin_datadir:/data"
+    - "bitcoin_wallet_datadir:/walletdata"
+    - "tor_datadir:/home/tor/.tor"
+    links:
+    - tor
+  nbxplorer:
+    restart: unless-stopped
+    image: nicolasdorier/nbxplorer:2.1.2
+    expose:
+    - "32838"
+    environment:
+      NBXPLORER_NETWORK: ${NBITCOIN_NETWORK:-regtest}
+      NBXPLORER_BIND: 0.0.0.0:32838
+      NBXPLORER_SIGNALFILESDIR: /datadir
+      NBXPLORER_CHAINS: "btc"
+      NBXPLORER_BTCRPCURL: http://bitcoind:43782/
+      NBXPLORER_BTCNODEENDPOINT: bitcoind:39388
+    volumes:
+    - "nbxplorer_datadir:/datadir"
+    - "bitcoin_datadir:/root/.bitcoin"
+  clightning_bitcoin:
+    image: btcpayserver/lightning:v0.8.0
+    container_name: btcpayserver_clightning_bitcoin
+    restart: unless-stopped
+    environment:
+      LIGHTNINGD_NETWORK: ${NBITCOIN_NETWORK:-regtest}
+      LIGHTNINGD_CHAIN: btc
+      LIGHTNINGD_ALIAS: ${LIGHTNING_ALIAS}
+      LIGHTNINGD_ANNOUNCEADDR: ${BTCPAY_ANNOUNCEABLE_HOST}
+      LIGHTNINGD_PORT: 9735
+      LIGHTNINGD_READY_FILE: /root/.nbxplorer/btc_fully_synched
+      LIGHTNINGD_OPT: |
+        bitcoin-datadir=/etc/bitcoin
+        bitcoin-rpcconnect=bitcoind
+
+        proxy=tor:9050
+      HIDDENSERVICE_NAME: c-lightning
+      HIDDENSERVICE_PORT: 9735
+      LIGHTNINGD_HIDDENSERVICE_HOSTNAME_FILE: /var/lib/tor/hidden_services/c-lightning/hostname
+    volumes:
+    - "clightning_bitcoin_datadir:/root/.lightning"
+    - "bitcoin_datadir:/etc/bitcoin"
+    - "nbxplorer_datadir:/root/.nbxplorer"
+    - "tor_servicesdir:/var/lib/tor/hidden_services"
+    ports:
+    - "9735:9735"
+    links:
+    - bitcoind
+    - tor
+  clightning_bitcoin_charge:
+    image: shesek/lightning-charge:0.4.11-standalone
+    restart: unless-stopped
+    environment:
+      NETWORK: ${NBITCOIN_NETWORK:-regtest}
+      COOKIE_FILE: /data/.cookie
+      URL: ${BTCPAY_ROOTPATH:-/}lightning-charge/btc/
+    volumes:
+    - "clightning_bitcoin_datadir:/etc/lightning"
+    - "clightning_bitcoin_charge:/data"
+    expose:
+    - "9112"
+    links:
+    - clightning_bitcoin
+  clightning_bitcoin_spark:
+    image: shesek/spark-wallet:0.2.9-standalone
+    restart: unless-stopped
+    environment:
+      NETWORK: ${NBITCOIN_NETWORK:-regtest}
+      SPARK_OPT: --no-tls -C /data/.cookie
+    volumes:
+    - "clightning_bitcoin_datadir:/etc/lightning"
+    - "clightning_bitcoin_spark:/data"
+    links:
+    - clightning_bitcoin
+    expose:
+    - "9737"
+  postgres:
+    restart: unless-stopped
+    image: postgres:9.6.5
+    volumes:
+    - "postgres_datadir:/var/lib/postgresql/data"
+  tor:
+    restart: unless-stopped
+    image: btcpayserver/tor:0.4.1.5
+    container_name: tor
+    environment:
+      TOR_PASSWORD: btcpayserver
+      TOR_ADDITIONAL_CONFIG: /usr/local/etc/tor/torrc-2
+      TOR_EXTRA_ARGS: |
+        CookieAuthentication 1
+    expose:
+    - "9050"
+    - "9051"
+    volumes:
+    - "tor_datadir:/home/tor/.tor"
+    - "tor_torrcdir:/usr/local/etc/tor"
+    - "tor_servicesdir:/var/lib/tor/hidden_services"
+  tor-gen:
+    restart: unless-stopped
+    image: btcpayserver/docker-gen:0.7.7
+    container_name: tor-gen
+    volumes:
+    - "/var/run/docker.sock:/tmp/docker.sock:ro"
+    - "./torrc.tmpl:/etc/docker-gen/templates/torrc.tmpl:ro"
+    - "tor_torrcdir:/usr/local/etc/tor"
+    entrypoint: /usr/local/bin/docker-gen -notify-sighup tor -watch -wait 5s:30s /etc/docker-gen/templates/torrc.tmpl /usr/local/etc/tor/torrc-2
+    links:
+    - tor
+volumes:
+  traefik_logs: 
+  btcpay_datadir: 
+  bitcoin_datadir: 
+  bitcoin_wallet_datadir: 
+  clightning_bitcoin_datadir: 
+  clightning_bitcoin_spark: 
+  clightning_bitcoin_charge: 
+  postgres_datadir: 
+  nbxplorer_datadir: 
+  tor_datadir: 
+  tor_torrcdir: 
+  tor_servicesdir: 
+networks: {}
