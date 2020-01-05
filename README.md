@@ -36,6 +36,7 @@ docker-compose up -d
 
 ## TODO
 
+* use blockstream version of electrs
 * add reverse proxy
 * complete integration with let's encrypt
 * integrate with esplora
