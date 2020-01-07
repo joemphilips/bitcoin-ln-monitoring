@@ -15,14 +15,14 @@ services:
       - -rpcauth=${BITCOIND_RPC_AUTH}
       - -rpcport=43782
       - -rpcbind=0.0.0.0:43782
+      - -rpcallowip=0.0.0.0/0
       - -port=39388
       - -txindex=1
-      - -whitelist=0.0.0.0/0
       - -zmqpubrawblock=tcp://0.0.0.0:28332
       - -zmqpubrawtx=tcp://0.0.0.0:28333
       - -deprecatedrpc=signrawtransaction
       - -assumevalid=0000000000000000000f1c54590ee18d15ec70e68c8cd4cfbadb1b4f11697eee
-    ports: 
+    ports:
       - "43782:43782"
     expose:
       - "43782" # RPC
