@@ -6,6 +6,7 @@ services:
     build:
       context: ./Dockerfiles
       dockerfile: bitcoin
+    image: joemphilips/bitcoind
     environment:
       BITCOIN_NETWORK: mainnet
     user: root:root
@@ -47,7 +48,7 @@ services:
         -Declair.server.port=9876
         -Declair.api.enabled=true
         -Declair.api.binding-ip=0.0.0.0
-        -Declair.api.port=8080
+        -Declair.api.port=18924
         -Declair.node-alias=jem2323-eclair1
         -Declair.api.password=${ECLAIR_API_PASS}
         -Declair.bitcoind.host=bitcoind
@@ -56,9 +57,11 @@ services:
         -Declair.bitcoind.rpcpassword=${BITCOIND_RPC_PASS}
         -Declair.bitcoind.zmqblock=tcp://bitcoind:28332
         -Declair.bitcoind.zmqtx=tcp://bitcoind:28333
+    ports:
+      - "18924:18924"
     expose:
       - "9876" # server port
-      - "8080" # api port
+      - "18924" # api port
     volumes:
       - "${DATADIR_ROOT}/.bitcoin:/etc/bitcoin"
       - "${DATADIR_ROOT}/.eclair:/data"
@@ -152,7 +155,10 @@ services:
       - "9737:9737"
 
   electrs:
-    image: joemphilips/electrs:v0.8.2
+    build:
+      context: Dockerfiles
+      dockerfile: electrs
+    image: joemphilips/electrs
     restart: unless-stopped
     user: root:root
     environment:
@@ -176,18 +182,6 @@ services:
       - 50001:50001
     expose:
       - "4224" # for prometheus
-
-  esplora:
-    image: joemphilips/esplora:git-1479936
-    environment:
-      NODE_ENV: production
-    entrypoint: bash -c
-    command:
-      - /srv/explorer/run.sh bitcoin-mainnet explorer
-    ports:
-      - 8082:80
-    volumes:
-      - "${DATADIR_ROOT}/.bitcoin:/data"
 
   alertmanager:
     image: prom/alertmanager:v0.20.0
@@ -225,6 +219,7 @@ services:
 
   grafana:
     image: grafana/grafana:6.5.2-ubuntu
+    user: root:root
     ports:
       - 3000:3000
     volumes:
@@ -232,6 +227,19 @@ services:
       - "${DATADIR_ROOT}/grafana/provisioning:/etc/grafana/provisioning"
     links:
       - prometheus
+
+  jupyter:
+    build:
+      context: ./Dockerfiles
+      dockerfile: jupyter
+    image: joemphilips/jupyter-notebook
+    restart: unless-stopped
+    ports:
+      - 8888:8888
+    command:
+      - --NotebookApp.token='notebookapptoken'
+    volumes:
+       - "${DATADIR_ROOT}/.jupyter:/data"
 
   postgres:
     restart: unless-stopped

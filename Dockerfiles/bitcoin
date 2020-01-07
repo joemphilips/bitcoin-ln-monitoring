@@ -1,4 +1,4 @@
-FROM debian:stretch-slim
+FROM debian:stretch-slim as build
 
 RUN set -ex \
 	&& apt-get update \

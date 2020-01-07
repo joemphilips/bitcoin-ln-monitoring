@@ -1,0 +1,26 @@
+FROM rust:1.34.0-slim as build
+
+RUN apt-get update
+RUN apt-get install -y clang cmake git
+RUN apt-get install -y libsnappy-dev
+
+RUN adduser --disabled-login --system --shell /bin/false --uid 1000 user
+
+USER user
+RUN git clone --quiet --depth 1 --single-branch --branch v0.8.2 https://github.com/romanz/electrs /home/user/electrs
+WORKDIR /home/user/electrs
+
+RUN cargo build --release
+RUN cargo install --path .
+
+FROM rust:1.34.0-slim
+
+COPY --from=build /usr/local/cargo/bin/electrs /bin
+
+# Electrum RPC
+EXPOSE 50001
+
+# Prometheus monitoring
+EXPOSE 4224
+
+STOPSIGNAL SIGINT
