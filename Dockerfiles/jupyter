@@ -5,6 +5,34 @@ RUN pip install --upgrade pip && \
     pip install Keras && \
     pip install tensorflow 
 
+USER root
+# --- intsall dotnet sdk ----
+RUN apt-get update && apt install -y gpg wget
+
+RUN wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.asc.gpg \
+  && mv microsoft.asc.gpg /etc/apt/trusted.gpg.d/ \
+  && wget -q https://packages.microsoft.com/config/debian/9/prod.list \
+  && mv prod.list /etc/apt/sources.list.d/microsoft-prod.list
+
+RUN apt-get update \
+  && apt-get install -y apt-transport-https \
+  && apt-get update \
+  && apt-get install -y dotnet-sdk-3.1 \
+  && dotnet help
+# --- ---
+
+ENV DOTNET_CLI_TELEMETRY_OPTOUT=1
+
+# --- install dotnet kernel ---
+RUN dotnet tool install --global dotnet-try
+
+# we need this to find `dotnet try` on path
+RUN echo $HOME # must be `/root`
+ENV PATH="${PATH}:/root/.dotnet/tools"
+RUN echo "$PATH"
+RUN dotnet try jupyter install
+# --- ---
+
 WORKDIR /workdir
 
 EXPOSE 8888
