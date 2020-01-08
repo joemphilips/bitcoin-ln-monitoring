@@ -32,6 +32,16 @@ services:
       - "28333" # ZMQ
     volumes:
       - "${DATADIR_ROOT}/.bitcoin:/data"
+    deploy:
+      mode: replicated
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.90'
+          memory: '600M'
+        reservations:
+          cpus: '0.20'
+          memory: '50M'
 
   eclair:
     restart: unless-stopped
@@ -67,6 +77,16 @@ services:
       - "${DATADIR_ROOT}/.eclair:/data"
     links:
       - bitcoind
+    deploy:
+      mode: replicated
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.20'
+          memory: '300M'
+        reservations:
+          cpus: '0.10'
+          memory: '50M'
 
   nbxplorer:
     restart: unless-stopped
@@ -171,7 +191,7 @@ services:
       - --daemon-dir=/bitcoin
       - --electrum-rpc-addr=127.0.0.1:50001
       - --daemon-rpc-addr=bitcoind:43782
-      - --monitoring-addr=electrs:4224
+      - --monitoring-addr=0.0.0.0:4224
       - --bulk-index-threads=1
       - --tx-cache-size-mb=256
     volumes:
@@ -182,6 +202,10 @@ services:
       - 50001:50001
     expose:
       - "4224" # for prometheus
+    deploy:
+      mode: replicated
+      replicas: 1
+
 
   alertmanager:
     image: prom/alertmanager:v0.20.0
