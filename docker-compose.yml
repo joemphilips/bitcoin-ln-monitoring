@@ -44,7 +44,7 @@ services:
       - -zmqpubrawblock=tcp://0.0.0.0:28332
       - -zmqpubrawtx=tcp://0.0.0.0:28333
       - -deprecatedrpc=signrawtransaction
-      - -assumevalid=0000000000000000000f1c54590ee18d15ec70e68c8cd4cfbadb1b4f11697eee
+      - -assumevalid=00000000000000000012d0c0982d818aa909d78e54525b10563c698d89997632
     ports:
       - "43782:43782"
     expose:
