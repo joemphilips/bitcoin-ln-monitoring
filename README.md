@@ -24,15 +24,29 @@ docker-compose up -d
 * `rabbitmq`
   * For nbxplorer
 * `lightningd` (with prometheus plugin)
+* `lnd`
   * for layer2
+* `eclair`
+  * To understand the difference with lightningd and lnd
 * `spark_wallet`
   * backend for spark wallet on android
-* `eclair`
-  * To understand the difference with lightningd
 * `Prometheus`
   * For collecting metrics and alerting
 * `Grafana`
   * For visualization of metrics
+
+## ports opened to the outside world
+
+* 43782 ... bitcoind rpc 
+* 18924 ... eclair(rest)
+* 32838 ... nbxplorer(rest)
+* 32736 ... lnd(rest)
+* 9835 ... lightningd(api)
+* 9737 ... `lightning_spark` (rest)
+* 50001 ... electrs
+* 9090 ... prometheus
+* 3000 ... grafana
+* 8888 ... jupyter
 
 ## TODO
 
