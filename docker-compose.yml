@@ -116,6 +116,40 @@ services:
       - bitcoind
       - rabbitmq
 
+
+  lnd:
+    restart: unless-stopped
+    image: joemphilips/lnd
+    build:
+      context: ./Dockerfiles
+      dockerfile: lnd
+    entrypoint: ["./start-lnd.sh"]
+    environment:
+      NETWORK: mainnet
+    command:
+      - --restlisten=lnd:8080
+      - --bitcoin.mainnet
+      - --bitcoin.node=bitcoind
+      - --bitcoind.rpchost=bitcoind:43782
+      - --bitcoind.rpcuser=${BITCOIND_RPC_USER}
+      - --bitcoind.rpcpass=${BITCOIND_RPC_PASS}
+      - --bitcoind.zmqpubrawblock=tcp://bitcoind:28332
+      - --bitcoind.zmqpubrawtx=tcp://bitcoind:28333
+      - --trickledelay=1000
+      - --externalip=lnd:9735
+      #- --no-macaroons=1
+      - --debuglevel=debug
+      - --noseedbackup
+    ports:
+      - "32736:8080"
+    expose:
+      - "9735"
+    volumes:
+      - "${DATADIR_ROOT}/.lnd:/data"
+      - "${DATADIR_ROOT}/.bitcoin:/deps/.bitcoin"
+    links:
+      - bitcoind
+
   lightningd:
     image: blockstream/lightningd:prom
     command:
