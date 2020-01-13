@@ -20,7 +20,7 @@ route:
 
   # If an alert has successfully been sent, wait 'repeatinterval' to
   # resend them.
-  repeat_interval: 20m
+  repeat_interval: 5h
   receiver: 'alerts-email'
 receivers:
   - name: alerts-email
