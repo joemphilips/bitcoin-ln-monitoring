@@ -10,13 +10,19 @@ services:
       - "${REVERSEPROXY_HTTPS_PORT:-443}:443"
       - "${REVERSE_PROXY_WEB_UI:-8080}:8080"
     command:
+      - "--log.level=DEBUG"
       - "--api"
+      - "--api.insecure=true"
       - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entryPoints.http.address=:80"
+      - "--entryPoints.https.address=:443"
+      #- "--configfile=/traefik.toml"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
-      - "./traefik.toml:/traefik.toml"
-      - "./acme.json:/acme.json:ro"
-      - "./servers.toml:/servers.toml"
+      #- "./traefik.toml:/traefik.toml"
+      #- "./acme.json:/acme.json:ro"
+      #- "./servers.toml:/servers.toml"
       - "${DATADIR_ROOT}/traefik_logs:/traefik_logs"
 
   bitcoind:
@@ -318,7 +324,9 @@ services:
        - "${DATADIR_ROOT}/.jupyter:/data"
     labels:
       - "traefik.enable=true" # Enable reverse-proxy for this service
-      - "traefik.frontend.rule=Host:jupyter" # Domain name for the app
+      - "traefik.http.routers.jupyter.rule=Host(`${PUBLIC_DNS}`) && PathPrefix(`/jupyter`)"
+      - "traefik.http.routers.jupyter.entrypoints=http,https"
+      - "traefik.http.services.jupyter-service.loadbalancer.server.port=8888"
 
   postgres:
     restart: unless-stopped
