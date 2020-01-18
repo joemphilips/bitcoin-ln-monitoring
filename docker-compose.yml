@@ -17,6 +17,7 @@ services:
       - "--providers.docker.exposedbydefault=false"
       - "--entryPoints.http.address=:80"
       - "--entryPoints.https.address=:443"
+      - "--metrics.prometheus=true"
       #- "--configfile=/traefik.toml"
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock"
@@ -309,6 +310,8 @@ services:
       - "${DATADIR_ROOT}/grafana/provisioning:/etc/grafana/provisioning"
     links:
       - prometheus
+    labels:
+      - "traefik.enable=true"
 
   jupyter:
     build:
@@ -324,7 +327,7 @@ services:
        - "${DATADIR_ROOT}/.jupyter:/data"
     labels:
       - "traefik.enable=true" # Enable reverse-proxy for this service
-      - "traefik.http.routers.jupyter.rule=Host(`${PUBLIC_DNS}`) && PathPrefix(`/jupyter`)"
+      - "traefik.http.routers.jupyter.rule=Host(`jupyter.${PUBLIC_DNS}`)"
       - "traefik.http.routers.jupyter.entrypoints=http,https"
       - "traefik.http.services.jupyter-service.loadbalancer.server.port=8888"
 
