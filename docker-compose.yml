@@ -128,7 +128,8 @@ services:
     environment:
       NETWORK: mainnet
     command:
-      - --restlisten=lnd:8080
+      - --restlisten=0.0.0.0:32736
+      - --rpclisten=0.0.0.0:32777
       - --bitcoin.mainnet
       - --bitcoin.node=bitcoind
       - --bitcoind.rpchost=bitcoind:43782
@@ -138,14 +139,20 @@ services:
       - --bitcoind.zmqpubrawtx=tcp://bitcoind:28333
       - --trickledelay=1000
       - --externalip=lnd:9735
-      #- --no-macaroons=1
+        #- --no-macaroons
       - --datadir=/data
       - --debuglevel=debug
       - --noseedbackup
+      - --tlscertpath=/data/tls.cert
+      - --tlskeypath=/data/tls.key
+      - --tlsextradomain=lnd
     ports:
-      - "32736:8080"
+      - "32736"
+      - "32777"
     expose:
       - "9735"
+      - "32736"
+      - "32777"
     volumes:
       - "${DATADIR_ROOT}/.lnd:/data"
       - "${DATADIR_ROOT}/.bitcoin:/deps/.bitcoin"
@@ -154,19 +161,23 @@ services:
 
   loop:
     restart: unless-stopped
-    image: joemphilips/lnd
+    image: joemphilips/loop
     build:
       context: ./Dockerfiles
       dockerfile: loop
     entrypoint: ["loopd"]
     command:
       - --network=mainnet
-      - --datadir=/data
+      - --lnd.host=lnd:32777
+      - --lnd.tlspath=/root/.lnd/data/tls.cert
     ports:
-      - "8081"
-      - "11010"
+      - "8081" # rest
+      - "11010" # gRPC
     volumes:
-      - "${DATADIR_ROOT}/.loop:/data"
+      - "${DATADIR_ROOT}/.loop:/root/.loop"
+      - "${DATADIR_ROOT}/.lnd:/root/.lnd/data"
+    links:
+      - lnd
 
   lightningd:
     image: blockstream/lightningd:prom

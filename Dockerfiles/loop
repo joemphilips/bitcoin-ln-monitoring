@@ -15,8 +15,8 @@ RUN apk add --no-cache --update alpine-sdk \
 # Copy in the local repository to build from.
 RUN git clone --quiet --depth 1 --single-branch --branch $LIGHTNING_LOOP_VERSION https://github.com/lightninglabs/loop /go/src/github.com/lightninglabs/loop
 
-RUN cd /bo/src/github.com/lightninglabs/loop/cmd \
-    && go isntall 
+RUN cd /go/src/github.com/lightninglabs/loop/cmd \
+    && go install ./...
 
 
 FROM alpine as final
