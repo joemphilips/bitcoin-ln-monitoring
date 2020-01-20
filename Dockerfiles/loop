@@ -1,0 +1,32 @@
+FROM golang:1.13-alpine as builder
+LABEL maintainer="Joe Miyamoto <joemphilips@gmail.com>"
+
+ARG LIGHTNING_LOOP_VERSION=v0.3.1-alpha
+
+# Force Go to use the cgo based DNS resolver. This is required to ensure DNS
+# queries required to connect to linked containers succeed.
+ENV GODEBUG netdns=cgo
+
+# Install dependencies
+RUN apk add --no-cache --update alpine-sdk \
+    git \
+    make
+
+# Copy in the local repository to build from.
+RUN git clone --quiet --depth 1 --single-branch --branch $LIGHTNING_LOOP_VERSION https://github.com/lightninglabs/loop /go/src/github.com/lightninglabs/loop
+
+RUN cd /bo/src/github.com/lightninglabs/loop/cmd \
+    && go isntall 
+
+
+FROM alpine as final
+
+# Server and RPC port
+EXPOSE 8081 11010
+
+COPY --from=builder /go/bin/loopd /bin
+COPY --from=builder /go/bin/loop /bin
+
+RUN apk add --no-cache \
+    bash \
+    ca-certificates

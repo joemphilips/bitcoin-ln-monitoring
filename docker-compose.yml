@@ -139,6 +139,7 @@ services:
       - --trickledelay=1000
       - --externalip=lnd:9735
       #- --no-macaroons=1
+      - --datadir=/data
       - --debuglevel=debug
       - --noseedbackup
     ports:
@@ -150,6 +151,22 @@ services:
       - "${DATADIR_ROOT}/.bitcoin:/deps/.bitcoin"
     links:
       - bitcoind
+
+  loop:
+    restart: unless-stopped
+    image: joemphilips/lnd
+    build:
+      context: ./Dockerfiles
+      dockerfile: loop
+    entrypoint: ["loopd"]
+    command:
+      - --network=mainnet
+      - --datadir=/data
+    ports:
+      - "8081"
+      - "11010"
+    volumes:
+      - "${DATADIR_ROOT}/.loop:/data"
 
   lightningd:
     image: blockstream/lightningd:prom
