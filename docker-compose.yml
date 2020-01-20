@@ -3,8 +3,8 @@ version: "3"
 services:
   traefik:
     restart: unless-stopped
-    image: traefik
-    container_name: traefik:2.1
+    image: traefik:2.1
+    container_name: traefik
     ports:
       - "${REVERSEPROXY_HTTP_PORT:-80}:80"
       - "${REVERSEPROXY_HTTPS_PORT:-443}:443"
