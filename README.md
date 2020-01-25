@@ -13,6 +13,11 @@ docker-compose up -d
 # if you have to run docker-compose with duso, try adding -E option to preserve environment variables
 ```
 
+# running on azure
+
+There is a utility scripts to configure azure vm for hosting environment in `azure/`
+You must run those scripts from project root
+
 # technical stack used
 
 * `bitcoind`

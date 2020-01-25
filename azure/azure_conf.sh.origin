@@ -1,0 +1,4 @@
+export VM_NAME="your-vm-name"
+export DATADISK_NAME="your-datadisk-name"
+export SNAPSHOT_NAME="your-snapshot-name"
+export RESOURCE_GROUP="your-resource-group-name"
