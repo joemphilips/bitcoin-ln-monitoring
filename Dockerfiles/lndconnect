@@ -1,0 +1,29 @@
+FROM golang:1.13-alpine as builder
+LABEL maintainer="Joe Miyamoto <joemphilips@gmail.com>"
+
+ARG LNDCONNECT_VERSION=v0.2.0
+
+# Force Go to use the cgo based DNS resolver. This is required to ensure DNS
+# queries required to connect to linked containers succeed.
+ENV GODEBUG netdns=cgo
+
+# Install dependencies
+RUN apk add --no-cache --update alpine-sdk \
+    git \
+    make
+
+# Copy in the local repository to build from.
+RUN git clone --quiet --depth 1 --single-branch --branch $LNDCONNECT_VERSION https://github.com/LN-Zap/lndconnect /go/src/github.com/LN-Zap/lndconnect
+
+RUN cd /go/src/github.com/LN-Zap/lndconnect \
+    && make
+
+
+FROM alpine as final
+
+COPY --from=builder /go/bin/lndconnect /bin
+
+RUN apk add --no-cache \
+    bash \
+    ca-certificates
+ENTRYPOINT ["lndconnect"]

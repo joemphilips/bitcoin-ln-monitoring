@@ -206,6 +206,31 @@ services:
     links:
       - lnd
 
+  lndconnect:
+    restart: unless-stopped
+    image: joemphilips/lndconnect:v0.2.0
+    build:
+      context: ./Dockerfiles
+      dockerfile: lndconnect
+      args:
+        - LNDCONNECT_VERSION=v0.2.0
+    command:
+      # lnd settings
+      - --lnddir=/root/.lnd
+      - --configfile=/root/.lnd
+      - --datadir=/root/.lnd
+      - --tlscertpath=/root/.lnd/tls.cert
+      - --bitcoin.mainnet
+
+      # lndconnect settings
+      - --port=10009
+    links:
+      - lnd
+    ports:
+      - "10009"
+    volumes:
+      - "${DATADIR_ROOT}/.lnd:/root/.lnd"
+
   lightningd:
     image: blockstream/lightningd:prom
     command:
