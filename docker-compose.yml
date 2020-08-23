@@ -40,7 +40,6 @@ services:
     command:
       - bitcoind
       - -datadir=/data
-      - -${BITCOIN_NETWORK:-mainnet}
       - -rpcauth=${BITCOIND_RPC_AUTH}
       - -rpcport=43782
       - -rpcbind=0.0.0.0:43782
