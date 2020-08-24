@@ -120,7 +120,7 @@ services:
     restart: unless-stopped
     ports:
       - 32838:32838
-    image: nicolasdorier/nbxplorer:2.1.3
+    image: nicolasdorier/nbxplorer:2.1.31
     environment:
       NBXPLORER_NETWORK: ${BITCOIN_NETWORK:-mainnet}
       NBXPLORER_BIND: 0.0.0.0:32838
