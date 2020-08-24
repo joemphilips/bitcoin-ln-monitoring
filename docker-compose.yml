@@ -136,6 +136,7 @@ services:
       NBXPLORER_RMQPASS: guest
       NBXPLORER_RMQTRANEX: NewTransaction
       NBXPLORER_RMQBLOCKEX: NewBlock
+      NBXPLORER_EXPOSERPC: 1
     volumes:
       - "${DATADIR_ROOT}/.nbxplorer:/datadir"
       - "${DATADIR_ROOT}/.bitcoin:/root/.bitcoin"
