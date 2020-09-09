@@ -2,7 +2,7 @@
 FROM golang:1.13-alpine as builder
 
 LABEL maintainer="Joe Miyamoto <joemphilips@gmail.com>"
-ARG LND_VERSION=v0.10.1-beta
+ARG LND_VERSION=v0.11
 
 # Force Go to use the cgo based DNS resolver. This is required to ensure DNS
 # queries required to connect to linked containers succeed.
