@@ -53,6 +53,7 @@ services:
       - -maxmempool=500 # MB
     ports:
       - "43782:43782"
+      - "39388:39388" # P2P
     expose:
       - "43782" # RPC
       - "39388" # P2P
@@ -170,7 +171,7 @@ services:
         #- --no-macaroons
       - --datadir=/data
       - --debuglevel=debug
-      - --noseedbackup
+        # - --noseedbackup
       - --tlscertpath=/data/tls.cert
       - --tlskeypath=/data/tls.key
       - --tlsextradomain=lnd
